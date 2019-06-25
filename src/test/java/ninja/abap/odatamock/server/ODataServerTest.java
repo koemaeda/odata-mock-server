@@ -42,7 +42,13 @@ public class ODataServerTest {
 	public void testEntitySetAutomaticData() throws Exception {
 		ODataMockServer server = new ODataMockServerBuilder()
     		.edmxFromFile("src/test/resources/Northwind.svc.edmx")
+    		.localDataPath("src/test/resources/mockdata")
+    		.generateMissing(true)
     		.build();
+
+		String count = Request.Get(server.getUri() + "Regions/$count")
+				.execute().returnContent().asString();
+			assertThat("Orders has 50 records", count, is("50"));
 
 		String resp = Request.Get(server.getUri() + "Regions")
 			.addHeader("Accept", "application/json")

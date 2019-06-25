@@ -59,14 +59,17 @@ class MockDataLoader {
 	 * @throws ODataException
 	 */
 	public void load(boolean generateMissing) throws ODataException {
+		MockDataGenerator generator = new MockDataGenerator(edm, dataStore);
+
 		for (EdmEntitySet entitySet : edm.getEntitySets()) {
 			try {
 				dataStore.storeRecords(entitySet, loadDataFromFile(entitySet.getName()));
 			}
 			catch (FileNotFoundException e) {
 				// TODO - log warning
+
 				if (generateMissing) {
-					// TODO - generate data
+					dataStore.storeRecords(entitySet, generator.generate(entitySet.getName()));
 				}
 			}
 			catch (Exception e) {
