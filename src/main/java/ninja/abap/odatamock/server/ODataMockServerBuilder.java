@@ -45,7 +45,7 @@ public class ODataMockServerBuilder {
 
 	/**
 	 * Root path for the OData service (eg "/my-odata-service").
-	 * Defaults is / (server root).
+	 * Defaults is "/" (server root).
 	 */
 	protected String rootPath = "/";
 
@@ -63,6 +63,9 @@ public class ODataMockServerBuilder {
 
 	/**
 	 * Read the Edmx metadata from a local file.
+	 * @param edmxPath Path (absolute or relative) to the local directory containing the JSON files
+	 * @return This Builder instance (for fluent calls)
+	 * @throws IOException If the Edmx file cannot be read
 	 */
 	public ODataMockServerBuilder edmxFromFile(@NonNull String edmxPath) throws IOException {
 		this.edmx = Files.newInputStream(Paths.get(edmxPath), StandardOpenOption.READ);
@@ -72,7 +75,8 @@ public class ODataMockServerBuilder {
 	/**
 	 * Create the OData server from the defined options.
 	 * The server is automatically started upon creation.
-	 * @return ODataServer
+	 * @return ODataServer The new running server instance
+	 * @throws Exception If the server fails to start
 	 */
 	public ODataMockServer build() throws Exception {
 		return new ODataMockServer(this);

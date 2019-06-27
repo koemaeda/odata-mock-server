@@ -46,7 +46,7 @@ public class MockDataStore {
 
 	/**
 	 * Mock data is stored in a Map hierarchy: 
-	 * Entity Set name -> Record Key -> Field values
+	 * Entity Set name / Record Key / Field values
 	 */
 	@Getter
 	protected final Map<String,  // Entity Set name
@@ -56,7 +56,7 @@ public class MockDataStore {
 		>> data = new HashMap<>();
 
 	/**
-	 * Entity Set name -> EntityType definition
+	 * Entity Set name to EntityType definition
 	 */
 	protected Map<String, EntityType> entityTypes = new HashMap<>();
 
@@ -78,9 +78,10 @@ public class MockDataStore {
 
 	/**
 	 * Get stored records for an Entity Set
-	 * @param entitySet
-	 * @return
-	 * @throws ODataApplicationException
+	 * @param entitySet Entity Set name
+	 * @return The stored records. Returned List is a copy of the actual stored data.
+	 * There are no guarantees on the type, mutability, serializability, or thread-safety of the List returned. 
+	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service.
 	 */
 	public List<Map<String, Object>> getEntitySet(String entitySet) throws ODataApplicationException {
 		if (! data.containsKey(entitySet))
@@ -92,9 +93,10 @@ public class MockDataStore {
 
 	/**
 	 * Inserts a record into an Entity Set
-	 * @param entitySet
-	 * @param record
-	 * @throws ODataApplicationException
+	 * @param entitySet Entity Set name
+	 * @param record New record to be added to the stored data (map of fields) 
+	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service
+	 *  or there's already an existing record with the same key.
 	 */
 	public void put(String entitySet, Map<String, Object> record) throws ODataApplicationException {
 		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
@@ -112,9 +114,10 @@ public class MockDataStore {
 
 	/**
 	 * Inserts multiple records into an Entity Set
-	 * @param entitySet
-	 * @param records
-	 * @throws ODataApplicationException
+	 * @param entitySet Entity Set name
+	 * @param records New records to be added to the stored data (maps of fields)
+	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service
+	 *  or there's already an existing record with the same key.
 	 */
 	public void putAll(String entitySet, Iterable<Map<String, Object>> records) throws ODataApplicationException {
 		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
@@ -134,10 +137,10 @@ public class MockDataStore {
 
 	/**
 	 * Removes a record from an Entity Set
-	 * @param entitySet
+	 * @param entitySet Entity Set name
 	 * @param key Record key fields
-	 * @return
-	 * @throws ODataApplicationException
+	 * @return The previous record associated with key, or null if there was no mapping for key.
+	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service.
 	 */
 	public Map<String, Object> remove(String entitySet, Map<String, Object> key) throws ODataApplicationException {
 		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
@@ -149,10 +152,10 @@ public class MockDataStore {
 
 	/**
 	 * Read an Entity Set record by its key fields
-	 * @param entitySet
+	 * @param entitySet Entity Set name
 	 * @param key Record key fields
-	 * @return
-	 * @throws ODataApplicationException
+	 * @return The record associated with key.
+	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service.
 	 */
 	public Map<String, Object> getRecordByKey(String entitySet, Map<String, Object> key) throws ODataApplicationException {
 		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
@@ -164,8 +167,8 @@ public class MockDataStore {
 
 	/**
 	 * Removes all stored records for an Entity Set
-	 * @param entitySet
-	 * @throws ODataApplicationException
+	 * @param entitySet Entity Set name
+	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service.
 	 */
 	public void truncate(String entitySet) throws ODataApplicationException {
 		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);

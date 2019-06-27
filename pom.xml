@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ninja.abap</groupId>
 	<artifactId>odata-mock-server</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>OData Mock Server</name>
 	<description>OData V2 service mocking library</description>
 
@@ -30,50 +30,52 @@
 
 	<properties>
 		<olingo.version>2.0.11</olingo.version>
-		<wiremock.version>2.19.0</wiremock.version>
-		<junit.version>4.12</junit.version>
+		<jetty.version>9.4.19.v20190610</jetty.version>
 	</properties>
 
 	<build>
 		<finalName>${project.artifactId}-${project.version}</finalName>
 
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>2.3.2</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-jar-plugin</artifactId>
-					<version>2.3.2</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-source-plugin</artifactId>
-					<version>2.2.1</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-javadoc-plugin</artifactId>
-					<version>2.9</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-assembly-plugin</artifactId>
-					<version>2.4</version>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
 				<configuration>
+					<encoding>UTF-8</encoding>
 					<source>1.8</source>
 					<target>1.8</target>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.1.2</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.1.0</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>3.1.0</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-deploy-plugin</artifactId>
+				<version>2.8.2</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+				<version>2.5.3</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-gpg-plugin</artifactId>
+				<version>1.6</version>
 			</plugin>
 		</plugins>
 	</build>
@@ -93,14 +95,10 @@
 			</activation>
 			<build>
 				<defaultGoal>clean install</defaultGoal>
-			</build>
-		</profile>
-		<profile>
-			<id>build.quality</id>
-			<build>
 				<plugins>
 					<plugin>
 						<artifactId>maven-checkstyle-plugin</artifactId>
+						<version>3.1.0</version>
 						<executions>
 							<execution>
 								<phase>package</phase>
@@ -119,26 +117,70 @@
 			<build>
 				<plugins>
 					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-javadoc-plugin</artifactId>
+						<artifactId>maven-deploy-plugin</artifactId>
 						<executions>
 							<execution>
-								<id>javadoc-jar</id>
-								<phase>${javadoc.phase}</phase>
+								<id>default-deploy</id>
+								<phase>deploy</phase>
 								<goals>
-									<goal>aggregate-jar</goal>
+									<goal>deploy</goal>
 								</goals>
-								<configuration>
-									<additionalJOptions>
-										<additionalJOption>-quiet</additionalJOption>
-									</additionalJOptions>
-									<groups>
-										<group>
-											<title>Dummy</title>
-											<packages>ninja.abap.odata.mock.api.*</packages>
-										</group>
-									</groups>
-								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-release-plugin</artifactId>
+						<configuration>
+							<localCheckout>true</localCheckout>
+							<pushChanges>false</pushChanges>
+							<mavenExecutorId>forked-path</mavenExecutorId>
+						</configuration>
+						<dependencies>
+							<dependency>
+								<groupId>org.apache.maven.scm</groupId>
+								<artifactId>maven-scm-provider-gitexe</artifactId>
+								<version>1.11.2</version>
+							</dependency>
+						</dependencies>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<configuration>
+							<encoding>UTF-8</encoding>
+						</configuration>
+						<executions>
+							<execution>
+								<id>attach-javadoc</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
 							</execution>
 						</executions>
 					</plugin>
@@ -148,6 +190,19 @@
 	</profiles>
 
 	<dependencies>
+		<!-- Jetty HTTP server -->
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-server</artifactId>
+			<version>${jetty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-servlet</artifactId>
+			<version>${jetty.version}</version>
+		</dependency>
+
+		<!-- Olingo OData server -->
 		<dependency>
 			<groupId>org.apache.olingo</groupId>
 			<artifactId>olingo-odata2-core</artifactId>
@@ -173,28 +228,30 @@
 			<artifactId>olingo-odata2-annotation-processor-core</artifactId>
 			<version>${olingo.version}</version>
 		</dependency>
+
+		<!-- Other compile dependencies -->
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 			<version>2.6</version>
 		</dependency>
-
 		<dependency>
-			<groupId>com.github.tomakehurst</groupId>
-			<artifactId>wiremock</artifactId>
-			<version>${wiremock.version}</version>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.7</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<version>1.18.8</version>
 			<scope>provided</scope>
 		</dependency>
+
+		<!-- Test dependencies -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>${junit.version}</version>
+			<version>4.12</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -203,7 +260,6 @@
 			<version>2.1</version>
 			<scope>test</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
@@ -224,4 +280,16 @@
 		<url>https://github.com/koemaeda/odata-mock-server</url>
 		<tag>HEAD</tag>
 	</scm>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+	</distributionManagement>
+
 </project>

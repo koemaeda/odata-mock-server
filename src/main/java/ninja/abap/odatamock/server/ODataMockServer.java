@@ -15,8 +15,10 @@
  */
 package ninja.abap.odatamock.server;
 
+import java.io.IOException;
 import java.net.URI;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.olingo.odata2.api.exception.ODataException;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -45,10 +47,12 @@ public class ODataMockServer {
 	/**
 	 * Constructor - Initializes and starts the OData server.
 	 * @param options OData server options
-	 * @throws Exception
+	 * @throws ODataException If the OData server fails to load
+	 * @throws IOException If the Edmx file cannot be read
+	 * @throws Exception If the Edmx parsing the HTTP server fails to start
 	 */
 	ODataMockServer(final @NonNull ODataMockServerBuilder options)
-			throws Exception {
+			throws ODataException, IOException, Exception {
 		this.options = options;
 		this.serviceFactory = new MockServiceFactory(options.edmx());
 		this.servlet = new MockServlet(serviceFactory);
@@ -67,7 +71,7 @@ public class ODataMockServer {
 
 	/**
 	 * Start the Jetty HTTP server and registers the OData servlet
-	 * @throws Exception
+	 * @throws Exception If Jetty fails to start
 	 */
 	public void start() throws Exception {
 		if (server != null && server.isRunning())
@@ -93,7 +97,7 @@ public class ODataMockServer {
 
 	/**
 	 * Stop the Jetty HTTP server
-	 * @throws Exception
+	 * @throws Exception If Jetty fails to stop
 	 */
 	public void stop() throws Exception {
 		if (server != null && server.isRunning())
