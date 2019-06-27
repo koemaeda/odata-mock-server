@@ -6,6 +6,11 @@ import org.junit.Test;
 import static org.hamcrest.MatcherAssert.assertThat; 
 import static org.hamcrest.Matchers.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import ninja.abap.odatamock.server.ODataMockServer;
 import ninja.abap.odatamock.server.ODataMockServerBuilder;
 
@@ -71,6 +76,32 @@ public class ODataServerTest {
 			.addHeader("Accept", "application/json")
 			.execute().returnContent().asString();
 		assertThat("File data was served", json, containsString("\"ShipName\":\"Vins et alcools Chevalier\""));
+	}
+
+	@Test
+	public void testManuallyLoadedEntitySet() throws Exception {
+		ODataMockServer server = new ODataMockServerBuilder()
+			.edmxFromFile("src/test/resources/Northwind.svc.edmx")
+			.build();
+		assertThat("Server URI is not null", server.getUri(), notNullValue());
+
+		List<Map<String, Object>> records = new ArrayList<>();
+		Map<String, Object> fields = new HashMap<>();
+		fields.put("CustomerID", "ANTON");
+		fields.put("CompanyName", "Antonio Moreno Taquería");
+		records.add(fields);
+
+		fields = new HashMap<>();
+		fields.put("CustomerID", "CHOPS");
+		fields.put("CompanyName", "Chop-suey Chinese");
+		records.add(fields);
+
+		server.getDataStore().putAll("Customers", records);
+
+		String json = Request.Get(server.getUri() + "Customers")
+				.addHeader("Accept", "application/json; charset=utf-8")
+				.execute().returnContent().asString();
+			assertThat("Stored data was served", json, containsString("\"CompanyName\":\"Antonio Moreno Taquería\""));
 	}
 
 }

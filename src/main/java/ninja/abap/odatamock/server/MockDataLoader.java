@@ -67,13 +67,13 @@ class MockDataLoader {
 
 		for (EdmEntitySet entitySet : edm.getEntitySets()) {
 			try {
-				dataStore.storeRecords(entitySet, loadDataFromFile(entitySet.getName()));
+				dataStore.putAll(entitySet.getName(), loadDataFromFile(entitySet.getName()));
 			}
 			catch (FileNotFoundException e) {
 				// TODO - log warning
 
 				if (generateMissing) {
-					dataStore.storeRecords(entitySet, generator.generate(entitySet.getName()));
+					dataStore.putAll(entitySet.getName(), generator.generate(entitySet.getName()));
 				}
 			}
 			catch (Exception e) {

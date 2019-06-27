@@ -15,6 +15,7 @@
  */
 package ninja.abap.odatamock.server;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -51,13 +52,13 @@ class MockDataSource implements DataSource {
 	@Override
 	public List<?> readData(EdmEntitySet entitySet)
 			throws ODataNotImplementedException, ODataNotFoundException, EdmException, ODataApplicationException {
-		return dataStore.getEntitySet(entitySet).asList();
+		return dataStore.getEntitySet(entitySet.getName());
 	}
 
 	@Override
 	public Object readData(EdmEntitySet entitySet, Map<String, Object> keys)
 			throws ODataNotImplementedException, ODataNotFoundException, EdmException, ODataApplicationException {
-		return dataStore.getRecordByKey(entitySet, keys);
+		return dataStore.getRecordByKey(entitySet.getName(), keys);
 	}
 
 	@Override
@@ -82,7 +83,7 @@ class MockDataSource implements DataSource {
 	@Override
 	public Object newDataObject(EdmEntitySet entitySet)
 			throws ODataNotImplementedException, EdmException, ODataApplicationException {
-		return dataStore.new MapEntityRecord();
+		return new HashMap<String, Object>();
 	}
 
 	@Override
@@ -94,21 +95,22 @@ class MockDataSource implements DataSource {
 	@Override
 	public void deleteData(EdmEntitySet entitySet, Map<String, Object> keys)
 			throws ODataNotImplementedException, ODataNotFoundException, EdmException, ODataApplicationException {
-		MockDataStore.MapEntityRecord record = dataStore.getRecordByKey(entitySet, keys);
+		Map<String, Object> record = dataStore.getRecordByKey(entitySet.getName(), keys);
 		if (record == null)
 			throw new ODataNotFoundException(ODataNotFoundException.ENTITY);
 
-		dataStore.deleteRecord(entitySet, record);
+		dataStore.remove(entitySet.getName(), record);
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public void createData(EdmEntitySet entitySet, Object data)
 			throws ODataNotImplementedException, EdmException, ODataApplicationException {
-		if (! (data instanceof MockDataStore.MapEntityRecord))
+		if (! (data instanceof Map))
 			throw new ODataApplicationException("Inserted record is of invalid type " +
 				data.getClass().getName(), Locale.getDefault());
 
-		dataStore.storeRecord(entitySet, (MockDataStore.MapEntityRecord) data);
+		dataStore.put(entitySet.getName(), (Map<String, Object>) data);
 	}
 
 	@Override

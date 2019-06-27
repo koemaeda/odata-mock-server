@@ -32,6 +32,12 @@ public class ODataMockServer {
 	protected Server server;
 	protected URI uri;
 
+	/**
+	 * Mock Data Store - Use this property to manipulate the served data.
+	 */
+	@Getter
+	protected MockDataStore dataStore;
+
 	protected final ODataMockServerBuilder options;
 	protected MockServiceFactory serviceFactory;
 	protected MockServlet servlet;
@@ -46,6 +52,8 @@ public class ODataMockServer {
 		this.options = options;
 		this.serviceFactory = new MockServiceFactory(options.edmx());
 		this.servlet = new MockServlet(serviceFactory);
+
+		this.dataStore = serviceFactory.getDataSource().getDataStore();
 
 		// Load/generate mock data
 		if (options.localDataPath() != null) {

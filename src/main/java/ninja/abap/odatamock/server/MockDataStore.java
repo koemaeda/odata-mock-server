@@ -18,33 +18,47 @@ package ninja.abap.odatamock.server;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.olingo.odata2.api.edm.EdmEntitySet;
-import org.apache.olingo.odata2.api.edm.EdmException;
-import org.apache.olingo.odata2.api.edm.EdmProperty;
 import org.apache.olingo.odata2.api.edm.provider.EdmProvider;
 import org.apache.olingo.odata2.api.edm.provider.EntityContainer;
 import org.apache.olingo.odata2.api.edm.provider.EntitySet;
+import org.apache.olingo.odata2.api.edm.provider.EntityType;
+import org.apache.olingo.odata2.api.edm.provider.PropertyRef;
 import org.apache.olingo.odata2.api.edm.provider.Schema;
 import org.apache.olingo.odata2.api.exception.ODataException;
+import org.apache.olingo.odata2.api.exception.ODataApplicationException;
 
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
 /**
- * 
- * Implementation based on org.apache.olingo.odata2.annotation.processor.core.datasource.DataStore
- *
+ * Simple in-memory data store for mock data
+ * Entity Sets and their data are stored in a tree of hash maps.
+ *  
+ * Implementation loosely based on org.apache.olingo.odata2.annotation.processor.core.datasource.DataStore
  */
-class MockDataStore {
+public class MockDataStore {
 
 	protected final EdmProvider edmProvider;
 
+	/**
+	 * Mock data is stored in a Map hierarchy: 
+	 * Entity Set name -> Record Key -> Field values
+	 */
 	@Getter
-	protected final MapServiceData data = new MapServiceData();
+	protected final Map<String,  // Entity Set name
+		LinkedHashMap<           // (records are stored in the order they are inserted)
+			Map<String, Object>, // Key fields
+			Map<String, Object>  // All fields
+		>> data = new HashMap<>();
+
+	/**
+	 * Entity Set name -> EntityType definition
+	 */
+	protected Map<String, EntityType> entityTypes = new HashMap<>();
 
 	MockDataStore(final @NonNull EdmProvider edmProvider) throws ODataException {
 		this.edmProvider = edmProvider;
@@ -52,91 +66,132 @@ class MockDataStore {
 		// Initialize the containers/collections
 		for (Schema edmSchema : edmProvider.getSchemas()) {
 			for (EntityContainer edmContainer : edmSchema.getEntityContainers()) {
-				MapEntityContainer container = new MapEntityContainer();
-				data.put(edmContainer.getName(), container);
-				
 				for (EntitySet edmES : edmContainer.getEntitySets()) {
-					MapCollection col = new MapCollection();
-					container.put(edmES.getName(), col);
+					data.put(edmES.getName(), new LinkedHashMap<>());
+
+					EntityType edmET = edmProvider.getEntityType(edmES.getEntityType());
+					entityTypes.put(edmES.getName(), edmET);
 				}
 			}
 		}
 	}
 
-	public MapEntityContainer getEntityContainer(String name) {
-		return data.get(name);
+	/**
+	 * Get stored records for an Entity Set
+	 * @param entitySet
+	 * @return
+	 * @throws ODataApplicationException
+	 */
+	public List<Map<String, Object>> getEntitySet(String entitySet) throws ODataApplicationException {
+		if (! data.containsKey(entitySet))
+			throw new ODataApplicationException(String.format("Entity Set %s not found", entitySet),
+					Locale.getDefault());
+
+		return data.get(entitySet).values().stream().collect(Collectors.toList());
 	}
 
-	public MapCollection getEntitySet(EdmEntitySet entitySet) throws EdmException {
-		MapEntityContainer container = getEntityContainer(entitySet.getEntityContainer().getName());
-		return container.get(entitySet.getName());
+	/**
+	 * Inserts a record into an Entity Set
+	 * @param entitySet
+	 * @param record
+	 * @throws ODataApplicationException
+	 */
+	public void put(String entitySet, Map<String, Object> record) throws ODataApplicationException {
+		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
+		if (esData == null)
+			throw new ODataApplicationException(String.format("Entity Set %s not found", entitySet),
+					Locale.getDefault());
+
+		Map<String, Object> key = getRecordKey(entitySet, record);
+		if (esData.containsKey(key))
+			throw new ODataApplicationException(String.format("Cannot insert duplicate record key in %s", entitySet),
+					Locale.getDefault());
+
+		esData.put(key, record);
 	}
 
-	public void storeRecord(EdmEntitySet entitySet, Map<String, Object> fields) throws EdmException {
-		MapCollection col = getEntitySet(entitySet);
-		MapEntityRecord record = fields instanceof MapEntityRecord
-			? (MapEntityRecord) fields : new MapEntityRecord(fields);
-		MapEntityKey key = getRecordKey(entitySet, record);
-		col.put(key, record);
-	}
+	/**
+	 * Inserts multiple records into an Entity Set
+	 * @param entitySet
+	 * @param records
+	 * @throws ODataApplicationException
+	 */
+	public void putAll(String entitySet, Iterable<Map<String, Object>> records) throws ODataApplicationException {
+		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
+		if (esData == null)
+			throw new ODataApplicationException(String.format("Entity Set %s not found", entitySet),
+					Locale.getDefault());
 
-	public void storeRecords(EdmEntitySet entitySet, Iterable<Map<String, Object>> data) throws EdmException {
-		MapCollection col = getEntitySet(entitySet);
-		for (Map<String, Object> fields : data) {
-			MapEntityRecord record = fields instanceof MapEntityRecord
-					? (MapEntityRecord) fields : new MapEntityRecord(fields);
-			MapEntityKey key = getRecordKey(entitySet, record);
-			col.put(key, record);
+		for (Map<String, Object> record : records) {
+			Map<String, Object> key = getRecordKey(entitySet, record);
+			if (esData.containsKey(key))
+				throw new ODataApplicationException(
+						String.format("Cannot insert duplicate record key in %s", entitySet), Locale.getDefault());
+
+			esData.put(key, record);
 		}
 	}
 
-	public void deleteRecord(EdmEntitySet entitySet, MapEntityRecord record) throws EdmException {
-		MapCollection col = getEntitySet(entitySet);
-		MapEntityKey key = getRecordKey(entitySet, record);
-		col.remove(key);
+	/**
+	 * Removes a record from an Entity Set
+	 * @param entitySet
+	 * @param key Record key fields
+	 * @return
+	 * @throws ODataApplicationException
+	 */
+	public Map<String, Object> remove(String entitySet, Map<String, Object> key) throws ODataApplicationException {
+		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
+		if (esData == null)
+			throw new ODataApplicationException(String.format("Entity Set %s not found", entitySet), Locale.getDefault());
+
+		return esData.remove(key);
 	}
 
-	public MapEntityRecord getRecordByKey(EdmEntitySet entitySet, Map<String, Object> key) throws EdmException {
-		MapCollection col = getEntitySet(entitySet);
-		return col.get(key);
+	/**
+	 * Read an Entity Set record by its key fields
+	 * @param entitySet
+	 * @param key Record key fields
+	 * @return
+	 * @throws ODataApplicationException
+	 */
+	public Map<String, Object> getRecordByKey(String entitySet, Map<String, Object> key) throws ODataApplicationException {
+		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
+		if (esData == null)
+			throw new ODataApplicationException(String.format("Entity Set %s not found", entitySet), Locale.getDefault());
+
+		return esData.get(key);
+	}
+
+	/**
+	 * Removes all stored records for an Entity Set
+	 * @param entitySet
+	 * @throws ODataApplicationException
+	 */
+	public void truncate(String entitySet) throws ODataApplicationException {
+		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
+		if (esData == null)
+			throw new ODataApplicationException(String.format("Entity Set %s not found", entitySet), Locale.getDefault());
+
+		esData.clear();
+	}
+
+	/**
+	 * Removes all stored data for ALL Entity Sets
+	 */
+	public void clear() {
+		data.keySet().parallelStream().forEach(name -> data.get(name).clear());
 	}
 
 
-	protected MapEntityKey getRecordKey(EdmEntitySet entitySet, MapEntityRecord record) throws EdmException {
-		MapEntityKey key = new MapEntityKey();
-		for (EdmProperty keyProp : entitySet.getEntityType().getKeyProperties()) {
+	protected Map<String, Object> getRecordKey(String entitySet, Map<String, Object> record)
+			throws ODataApplicationException {
+		Map<String, Object> keyFields = new HashMap<>();
+		EntityType entityType = entityTypes.get(entitySet);
+		for (PropertyRef keyProp : entityType.getKey().getKeys()) {
 			String propName = keyProp.getName();
-			key.put(propName, record.get(propName));
-		}		
-		return key;
-	}
-
-	//
-	// Shorthand types for Lists/Maps data storage
-	//
-
-	@SuppressWarnings("serial")
-	public static class MapEntityKey extends HashMap<String, Object> { }
-
-	@SuppressWarnings("serial")
-	@NoArgsConstructor
-	public class MapEntityRecord extends HashMap<String, Object> {
-		public MapEntityRecord(Map<String, Object> fields) {
-			this.putAll(fields);
+			keyFields.put(propName, record.get(propName));
 		}
+		return keyFields;
 	}
-
-	@SuppressWarnings("serial")
-	public static class MapCollection extends LinkedHashMap<MapEntityKey, MapEntityRecord> {
-		public List<MapEntityRecord> asList() {
-			return values().stream().collect(Collectors.toList());
-		}
-	}
-
-	@SuppressWarnings("serial")
-	public static class MapEntityContainer extends HashMap<String, MapCollection> { }
-
-	@SuppressWarnings("serial")
-	public static class MapServiceData extends HashMap<String, MapEntityContainer> { }
 
 }
