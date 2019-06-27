@@ -15,33 +15,67 @@
  */
 package ninja.abap.odatamock.server;
 
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.olingo.odata2.api.edm.Edm;
+import org.apache.olingo.odata2.api.edm.EdmEntitySet;
 import org.apache.olingo.odata2.api.edm.EdmEntityType;
 import org.apache.olingo.odata2.api.edm.EdmException;
+import org.apache.olingo.odata2.api.edm.EdmFacets;
 import org.apache.olingo.odata2.api.edm.EdmLiteralKind;
 import org.apache.olingo.odata2.api.edm.EdmSimpleType;
 import org.apache.olingo.odata2.api.edm.EdmType;
-import lombok.RequiredArgsConstructor;
+import org.apache.olingo.odata2.api.edm.provider.EdmProvider;
+import org.apache.olingo.odata2.api.edm.provider.EntityContainer;
+import org.apache.olingo.odata2.api.edm.provider.EntitySet;
+import org.apache.olingo.odata2.api.edm.provider.EntityType;
+import org.apache.olingo.odata2.api.edm.provider.Property;
+import org.apache.olingo.odata2.api.edm.provider.Schema;
+import org.apache.olingo.odata2.api.exception.ODataException;
+
+import lombok.NonNull;
 
 /**
  * OData Mock Data Generator
  * Generates missing data for empty Entity Sets  
  */
-@RequiredArgsConstructor
 class MockDataGenerator {
 
 	protected final static int RECORD_COUNT = 50;
 
 	protected final Edm edm;
-	protected final MockDataStore dataStore;
+	protected final EdmProvider edmProvider;
+
+	protected final Map<String, EntitySet> entitySets = new HashMap<>();
+	protected final Map<EdmEntityType, EntityType> etClient2Prov = new HashMap<>();
+
+	MockDataGenerator(final @NonNull Edm edm, final @NonNull EdmProvider edmProvider)
+			throws EdmException, ODataException {
+		this.edm = edm;
+		this.edmProvider = edmProvider;
+
+		// Index Entity Sets
+		for (Schema edmSchema : edmProvider.getSchemas()) {
+			for (EntityContainer edmContainer : edmSchema.getEntityContainers()) {
+				for (EntitySet provES : edmContainer.getEntitySets()) {
+					entitySets.put(provES.getName(), provES);
+
+					// Map Edm types from Client to Provider
+					EdmEntitySet clientES = edm.getDefaultEntityContainer().getEntitySet(provES.getName());
+					EntityType provET = edmProvider.getEntityType(provES.getEntityType());
+					etClient2Prov.put(clientES.getEntityType(), provET);
+				}
+			}
+		}
+	}
 
 	/**
 	 * Generate automatic data for an Entity Set
@@ -71,11 +105,17 @@ class MockDataGenerator {
 			throws EdmException {
 		int fieldCount = entityType.getPropertyNames().size();
 		Map<String, Object> fields = new HashMap<>(fieldCount);
-		
+
+		// Read Provider EntityType
+		EntityType provET = etClient2Prov.get(entityType);
+		Map<String, Property> provProps = provET.getProperties().parallelStream()
+				.collect(Collectors.toMap(e -> e.getName(), e -> e));
+
 		for (String name : entityType.getPropertyNames()) {
 			EdmType edmType = entityType.getProperty(name).getType();
 			if (edmType instanceof EdmSimpleType) {
-				fields.put(name, generateValue(name, (EdmSimpleType) edmType, index));
+				EdmFacets facets = provProps.get(name).getFacets();
+				fields.put(name, generateValue(name, (EdmSimpleType) edmType, facets, index));
 			}
 		}
 
@@ -88,14 +128,13 @@ class MockDataGenerator {
 	 * 
 	 * @param fieldName Field name
 	 * @param edmType Field Edm type
+	 * @param facets Edm Facets (optional)
 	 * @param index Record index
 	 * @return Appropriate Java object for field
 	 * @throws EdmException
 	 */
-	public Object generateValue(String fieldName, EdmSimpleType edmType, int index) throws EdmException {
+	public Object generateValue(String fieldName, EdmSimpleType edmType, EdmFacets facets, int index) throws EdmException {
 		String strVal;
-
-		// TODO - check Facets
 
 		// For DateTime fields
 		Calendar calendar = Calendar.getInstance();
@@ -120,7 +159,10 @@ class MockDataGenerator {
 		case "Edm.Decimal":
 		case "Edm.Double":
 		case "Edm.Single":
-			strVal = String.format("%d.0", index);
+			BigDecimal val = new BigDecimal(index);
+			if (facets != null && facets.getScale() != null)
+				val.setScale(facets.getScale());
+			strVal = val.toPlainString();
 			break;
 		case "Edm.Guid":
 			strVal = String.format("%8d-%4d-%4d-%4d-%12d", index, index, index, index, index).replace(' ', '0');
@@ -134,7 +176,12 @@ class MockDataGenerator {
 			strVal = Integer.toString(index % 128);
 			break;
 		case "Edm.String":
-			strVal = String.format("%d", index);
+			String indexStr = String.format(" %d", index);
+			String namePrefix = fieldName;
+			if (facets != null && facets.getMaxLength() != null
+					&& namePrefix.length() + indexStr.length() > facets.getMaxLength())
+				namePrefix = fieldName.substring(0, facets.getMaxLength() - indexStr.length());
+			strVal = namePrefix + indexStr;
 			break;
 		case "Edm.Time":
 			strVal = String.format("PT%dH00M", index);
@@ -143,7 +190,7 @@ class MockDataGenerator {
 			throw new EdmException(EdmException.TYPEPROBLEM.addContent(edmType.toString()));
 		}
 
-		return edmType.valueOfString(strVal, EdmLiteralKind.JSON, null, edmType.getDefaultType());
+		return edmType.valueOfString(strVal, EdmLiteralKind.JSON, facets, edmType.getDefaultType());
 	}
 
 }

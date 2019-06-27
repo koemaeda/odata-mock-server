@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import org.apache.olingo.odata2.api.edm.Edm;
 import org.apache.olingo.odata2.api.edm.EdmEntitySet;
 import org.apache.olingo.odata2.api.edm.EdmException;
+import org.apache.olingo.odata2.api.edm.provider.EdmProvider;
 import org.apache.olingo.odata2.api.ep.EntityProvider;
 import org.apache.olingo.odata2.api.ep.EntityProviderException;
 import org.apache.olingo.odata2.api.ep.EntityProviderReadProperties;
@@ -44,11 +45,14 @@ import lombok.NonNull;
 class MockDataLoader {
 
 	protected final Edm edm;
+	protected final EdmProvider edmProvider;
 	protected final Path directory;
 	protected final MockDataStore dataStore;
 
-	MockDataLoader(final @NonNull Edm edm, final @NonNull String path, final @NonNull MockDataStore dataStore) throws ODataException {
+	MockDataLoader(final @NonNull Edm edm, final @NonNull EdmProvider edmProvider,
+			final @NonNull String path, final @NonNull MockDataStore dataStore) throws ODataException {
 		this.edm = edm;
+		this.edmProvider = edmProvider;
 		this.directory = Paths.get(path);
 		this.dataStore = dataStore;
 	}
@@ -59,7 +63,7 @@ class MockDataLoader {
 	 * @throws ODataException
 	 */
 	public void load(boolean generateMissing) throws ODataException {
-		MockDataGenerator generator = new MockDataGenerator(edm, dataStore);
+		MockDataGenerator generator = new MockDataGenerator(edm, edmProvider);
 
 		for (EdmEntitySet entitySet : edm.getEntitySets()) {
 			try {

@@ -49,7 +49,7 @@ public class ODataMockServer {
 
 		// Load/generate mock data
 		if (options.localDataPath() != null) {
-			MockDataLoader loader = new MockDataLoader(serviceFactory.getEdm(),
+			MockDataLoader loader = new MockDataLoader(serviceFactory.getEdm(), serviceFactory.getEdmProvider(),
 					options.localDataPath(), serviceFactory.getDataSource().getDataStore());
 			loader.load(options.generateMissing());
 		}
