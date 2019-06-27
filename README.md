@@ -8,7 +8,15 @@ The OData service is served by a Jetty HTTP server, making it useful for unit/in
 
 ## Installation
 
-*TODO - add Maven dependency here*
+Add this Maven dependency to your pom.xml:
+```xml
+<dependency>
+  <groupId>ninja.abap</groupId>
+  <artifactId>odata-mock-server</artifactId>
+  <version>1.0.0</version>
+  <scope>test</scope>
+</dependency>
+```
 
 ## Getting started
 
