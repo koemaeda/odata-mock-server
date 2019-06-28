@@ -6,6 +6,7 @@ import org.apache.olingo.odata2.api.client.batch.BatchPart;
 import org.apache.olingo.odata2.api.client.batch.BatchQueryPart;
 import org.apache.olingo.odata2.api.client.batch.BatchSingleResponse;
 import org.apache.olingo.odata2.api.ep.EntityProvider;
+import org.junit.After;
 import org.junit.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat; 
@@ -26,9 +27,16 @@ import ninja.abap.odatamock.server.ODataMockServerBuilder;
 
 public class ODataServerTest {
 
+	private ODataMockServer server;
+
+	@After
+	public void after() throws Exception {
+		server.stop();
+	}
+
 	@Test
 	public void testServerBuilderWithoutRootPath() throws Exception {
-		ODataMockServer server = new ODataMockServerBuilder()
+		server = new ODataMockServerBuilder()
     		.edmxFromFile("src/test/resources/Northwind.svc.edmx")
     		.build();
 
@@ -40,7 +48,7 @@ public class ODataServerTest {
 
 	@Test
 	public void testServerBuilderWithRootPath() throws Exception {
-		ODataMockServer server = new ODataMockServerBuilder()
+		server = new ODataMockServerBuilder()
     		.edmxFromFile("src/test/resources/Northwind.svc.edmx")
     		.rootPath("/my-odata")
     		.build();
@@ -54,7 +62,7 @@ public class ODataServerTest {
 
 	@Test
 	public void testEntitySetAutomaticData() throws Exception {
-		ODataMockServer server = new ODataMockServerBuilder()
+		server = new ODataMockServerBuilder()
     		.edmxFromFile("src/test/resources/Northwind.svc.edmx")
     		.localDataPath("src/test/resources/mockdata")
     		.generateMissing(true)
@@ -72,7 +80,7 @@ public class ODataServerTest {
 
 	@Test
 	public void testEntitySetFromFile() throws Exception {
-		ODataMockServer server = new ODataMockServerBuilder()
+		server = new ODataMockServerBuilder()
     		.edmxFromFile("src/test/resources/Northwind.svc.edmx")
     		.localDataPath("src/test/resources/mockdata")
     		.build();
@@ -89,7 +97,7 @@ public class ODataServerTest {
 
 	@Test
 	public void testManuallyLoadedEntitySet() throws Exception {
-		ODataMockServer server = new ODataMockServerBuilder()
+		server = new ODataMockServerBuilder()
 			.edmxFromFile("src/test/resources/Northwind.svc.edmx")
 			.build();
 		assertThat("Server URI is not null", server.getUri(), notNullValue());
@@ -115,7 +123,7 @@ public class ODataServerTest {
 
 	@Test
 	public void testBatchRequest() throws Exception {
-		ODataMockServer server = new ODataMockServerBuilder()
+		server = new ODataMockServerBuilder()
 			.edmxFromFile("src/test/resources/Northwind.svc.edmx")
 			.localDataPath("src/test/resources/mockdata")
 			.build();
@@ -149,7 +157,7 @@ public class ODataServerTest {
 
 	@Test
 	public void testFunctionImportHandler() throws Exception {
-		ODataMockServer server = new ODataMockServerBuilder()
+		server = new ODataMockServerBuilder()
 			.edmxFromFile("src/test/resources/OData.svc.edmx")
 			.build();
 		assertThat("Server URI is not null", server.getUri(), notNullValue());
