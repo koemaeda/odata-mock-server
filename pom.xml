@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ninja.abap</groupId>
 	<artifactId>odata-mock-server</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.1-SNAPSHOT</version>
 	<name>OData Mock Server</name>
 	<description>OData V2 service mocking library</description>
 

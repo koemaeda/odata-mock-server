@@ -27,6 +27,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 
 import lombok.Getter;
 import lombok.NonNull;
+import ninja.abap.odatamock.event.FunctionImportHandler;
 
 @Getter
 public class ODataMockServer {
@@ -102,6 +103,26 @@ public class ODataMockServer {
 	public void stop() throws Exception {
 		if (server != null && server.isRunning())
 			server.stop();
+	}
+
+	/**
+	 * Registers a Function Import handler for a specific function import.
+	 * @param functionName The Function Import name
+	 * @param handler A handler function to respond to the requests
+	 * @return This same instance for fluent calls
+	 */
+	public ODataMockServer onFunctionImport(String functionName, FunctionImportHandler handler) {
+		serviceFactory.getDataSource().getFunctionImportHandlers().put(functionName, handler);
+		return this;
+	}
+
+	/**
+	 * Unregisters all currently registered event handlers.
+	 * @return This same instance for fluent calls
+	 */
+	public ODataMockServer clearHandlers() {
+		serviceFactory.getDataSource().getFunctionImportHandlers().clear();
+		return this;
 	}
 
 }

@@ -33,6 +33,7 @@ import org.apache.olingo.odata2.api.exception.ODataNotImplementedException;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import ninja.abap.odatamock.event.FunctionImportHandler;
 
 /**
  * Implementation based on org.apache.olingo.odata2.annotation.processor.core.datasource.AnnotationInMemoryDs
@@ -43,6 +44,9 @@ class MockDataSource implements DataSource {
 	protected final EdmProvider edmProvider;
 	@Getter
 	protected final MockDataStore dataStore;
+
+	@Getter
+	protected final Map<String, FunctionImportHandler> functionImportHandlers = new HashMap<>();
 
 	MockDataSource(final @NonNull EdmProvider edmProvider) throws ODataException {
 		this.edmProvider = edmProvider;
@@ -64,7 +68,11 @@ class MockDataSource implements DataSource {
 	@Override
 	public Object readData(EdmFunctionImport function, Map<String, Object> parameters, Map<String, Object> keys)
 			throws ODataNotImplementedException, ODataNotFoundException, EdmException, ODataApplicationException {
-		throw new ODataNotImplementedException();
+		FunctionImportHandler handler = functionImportHandlers.get(function.getName());
+		if (handler != null)
+			return handler.handle(function, parameters, keys);
+		else
+			throw new ODataNotImplementedException();
 	}
 
 	@Override
