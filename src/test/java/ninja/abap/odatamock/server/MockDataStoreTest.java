@@ -32,8 +32,8 @@ public class MockDataStoreTest {
 	    		.edmxFromFile("src/test/resources/Northwind.svc.edmx")
 	    		.build();
 
-		edm = server.getServiceFactory().getEdm();
-		edmProvider = server.getServiceFactory().getEdmProvider();
+		edm = server.getEdm();
+		edmProvider = server.getEdmProvider();
 	}
 	
 	@Before
@@ -52,7 +52,7 @@ public class MockDataStoreTest {
 	}
 
 	@Test
-	public void testPutRecord() throws Exception {
+	public void testInsertRecord() throws Exception {
 		assertThat("Entity Set is empty", dataStore.getEntitySet("Customers").isEmpty(), is(true));
 
 		Map<String, Object> fields = new HashMap<>();
@@ -65,12 +65,12 @@ public class MockDataStoreTest {
 		fields.put("PostalCode", "05023");
 		fields.put("Country", "Mexico");
 
-		dataStore.put("Customers", fields);
+		dataStore.insert("Customers", fields);
 		assertThat("Entity Set has 1 record", dataStore.getEntitySet("Customers").size(), is(1));
 	}
 
 	@Test(expected = ODataException.class)
-	public void testPutDuplicateRecord() throws Exception {
+	public void testInsertDuplicateRecord() throws Exception {
 		assertThat("Entity Set is empty", dataStore.getEntitySet("Customers").isEmpty(), is(true));
 
 		Map<String, Object> fields = new HashMap<>();
@@ -82,8 +82,25 @@ public class MockDataStoreTest {
 		fields.put("City", "México D.F.");
 		fields.put("PostalCode", "05023");
 		fields.put("Country", "Mexico");
+		dataStore.insert("Customers", fields);
+		dataStore.insert("Customers", fields);
+	}
+
+	@Test
+	public void testUpdateRecord() throws Exception {
+		assertThat("Entity Set is empty", dataStore.getEntitySet("Customers").isEmpty(), is(true));
+
+		Map<String, Object> fields = new HashMap<>();
+		fields.put("CustomerID", "ANTON");
+		fields.put("CompanyName", "Antonio Moreno Taquería");
+
 		dataStore.put("Customers", fields);
-		dataStore.put("Customers", fields);
+		assertThat("Entity Set has 1 record", dataStore.getEntitySet("Customers").size(), is(1));
+
+		fields = new HashMap<>();
+		fields.put("CustomerID", "ANTON");
+		fields.put("CompanyName", "New Name");
+		assertThat("Entity Set still has 1 record", dataStore.getEntitySet("Customers").size(), is(1));
 	}
 
 	@Test

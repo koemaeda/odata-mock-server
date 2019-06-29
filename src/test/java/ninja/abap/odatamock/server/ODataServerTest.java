@@ -2,6 +2,7 @@ package ninja.abap.odatamock.server;
 
 import org.apache.http.client.fluent.Content;
 import org.apache.http.client.fluent.Request;
+import org.apache.http.entity.ContentType;
 import org.apache.olingo.odata2.api.client.batch.BatchPart;
 import org.apache.olingo.odata2.api.client.batch.BatchQueryPart;
 import org.apache.olingo.odata2.api.client.batch.BatchSingleResponse;
@@ -12,8 +13,10 @@ import org.junit.Test;
 import static org.hamcrest.MatcherAssert.assertThat; 
 import static org.hamcrest.Matchers.*;
 
+import java.io.File;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -100,7 +103,6 @@ public class ODataServerTest {
 		server = new ODataMockServerBuilder()
 			.edmxFromFile("src/test/resources/Northwind.svc.edmx")
 			.build();
-		assertThat("Server URI is not null", server.getUri(), notNullValue());
 
 		List<Map<String, Object>> records = new ArrayList<>();
 		Map<String, Object> fields = new HashMap<>();
@@ -127,7 +129,6 @@ public class ODataServerTest {
 			.edmxFromFile("src/test/resources/Northwind.svc.edmx")
 			.localDataPath("src/test/resources/mockdata")
 			.build();
-		assertThat("Server URI is not null", server.getUri(), notNullValue());
 
 		Map<String, String> reqHeaders = new HashMap<>();
 		reqHeaders.put("Accept", "application/json; charset=utf-8");
@@ -160,7 +161,6 @@ public class ODataServerTest {
 		server = new ODataMockServerBuilder()
 			.edmxFromFile("src/test/resources/OData.svc.edmx")
 			.build();
-		assertThat("Server URI is not null", server.getUri(), notNullValue());
 
 		server.onFunctionImport("GetProductsByRating", (function, parameters, keys) -> {
 			Map<String, Object> entry = new HashMap<>();
@@ -176,6 +176,57 @@ public class ODataServerTest {
 				.addHeader("Accept", "application/json; charset=utf-8")
 				.execute().returnContent().asString();
 		assertThat("Dummy data was served", json, containsString("\"Name\":\"Dummy Product\""));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void testCreateEntry() throws Exception {
+		server = new ODataMockServerBuilder()
+			.edmxFromFile("src/test/resources/Northwind.svc.edmx")
+			.build();
+
+		File jsonFile = Paths.get("src/test/resources/mockdata/Customer-create.json").toFile();
+		Request.Post(server.getUri() + "Customers")
+				.addHeader("Accept", "application/json; charset=utf-8")
+				.bodyFile(jsonFile, ContentType.APPLICATION_JSON.withCharset("utf-8"))
+				.execute().returnContent().asString();
+
+		List<Map<String, Object>> data = server.getDataStore().getEntitySet("Customers");
+		assertThat("1 record was created", data.size(), is(1));
+		Map<String, Object> entry = data.get(0);
+		assertThat("CompanyName is 'Antonio Moreno Taquería'",
+				entry.get("CompanyName"), is("Antonio Moreno Taquería"));
+		List<Map<String, Object>> orders = (List<Map<String, Object>>) entry.get("Orders");
+		assertThat("Orders association contain 2 records", orders.size(), is(2));
+
+		// Get association
+		String json = Request.Get(server.getUri() + "Customers('ANTON')/Orders")
+				.addHeader("Accept", "application/json; charset=utf-8")
+				.execute().returnContent().asString();
+		assertThat("Association data was served", json, containsString("\"ShipCity\":\"México D.F.\""));
+	}
+
+	@Test
+	public void testUpdateEntry() throws Exception {
+		server = new ODataMockServerBuilder()
+			.edmxFromFile("src/test/resources/Northwind.svc.edmx")
+			.build();
+
+		File jsonFile = Paths.get("src/test/resources/mockdata/Customer-create.json").toFile();
+		Request.Post(server.getUri() + "Customers")
+				.addHeader("Accept", "application/json; charset=utf-8")
+				.bodyFile(jsonFile, ContentType.APPLICATION_JSON.withCharset("utf-8"))
+				.execute();
+
+		Request.Patch(server.getUri() + "Customers('ANTON')")
+				.addHeader("Accept", "application/json; charset=utf-8")
+				.bodyString("{\"CompanyName\": \"New Name\"}", ContentType.APPLICATION_JSON.withCharset("utf-8"))
+				.execute();
+
+		Map<String, Object> key = new HashMap<>(1);
+		key.put("CustomerID", "ANTON");
+		Map<String, Object> entry = server.getDataStore().getRecordByKey("Customers", key);
+		assertThat("CompanyName is now 'New Name'", entry.get("CompanyName"), is("New Name"));
 	}
 
 }

@@ -17,8 +17,15 @@ package ninja.abap.odatamock.server;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.olingo.odata2.annotation.processor.core.datasource.DataSource;
+import org.apache.olingo.odata2.api.edm.Edm;
+import org.apache.olingo.odata2.api.ep.EntityProvider;
 import org.apache.olingo.odata2.api.exception.ODataException;
+import org.apache.olingo.odata2.core.edm.provider.EdmxProvider;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -41,7 +48,15 @@ public class ODataMockServer {
 	@Getter
 	protected MockDataStore dataStore;
 
+	@Getter
+	protected final String edmx;
+	@Getter
+	protected final Edm edm;
+	@Getter
+	protected final EdmxProvider edmProvider;
+
 	protected final ODataMockServerBuilder options;
+	protected DataSource dataSource;
 	protected MockServiceFactory serviceFactory;
 	protected MockServlet servlet;
 
@@ -55,15 +70,22 @@ public class ODataMockServer {
 	ODataMockServer(final @NonNull ODataMockServerBuilder options)
 			throws ODataException, IOException, Exception {
 		this.options = options;
-		this.serviceFactory = new MockServiceFactory(options.edmx());
-		this.servlet = new MockServlet(serviceFactory);
 
-		this.dataStore = serviceFactory.getDataSource().getDataStore();
+		// Parse the provided metadata file using Olingo and initialize the
+		//  in-memory Olingo data store and processor.
+		this.edmx = IOUtils.toString(options.edmx(), StandardCharsets.UTF_8);
+		this.edm = EntityProvider.readMetadata(IOUtils.toInputStream(this.edmx, StandardCharsets.UTF_8), true);
+		this.edmProvider = new EdmxProvider().parse(IOUtils.toInputStream(this.edmx, StandardCharsets.UTF_8), true);
+
+		this.dataStore = new MockDataStore(edmProvider);
+		this.dataSource = createDataSource();
+
+		this.serviceFactory = new MockServiceFactory(edmProvider, dataSource);
+		this.servlet = new MockServlet(serviceFactory);
 
 		// Load/generate mock data
 		if (options.localDataPath() != null) {
-			MockDataLoader loader = new MockDataLoader(serviceFactory.getEdm(), serviceFactory.getEdmProvider(),
-					options.localDataPath(), serviceFactory.getDataSource().getDataStore());
+			MockDataLoader loader = new MockDataLoader(edm, edmProvider, options.localDataPath(), dataStore);
 			loader.load(options.generateMissing());
 		}
 
@@ -112,7 +134,10 @@ public class ODataMockServer {
 	 * @return This same instance for fluent calls
 	 */
 	public ODataMockServer onFunctionImport(String functionName, FunctionImportHandler handler) {
-		serviceFactory.getDataSource().getFunctionImportHandlers().put(functionName, handler);
+		if (dataSource instanceof MockDataSource) {
+			MockDataSource mds = (MockDataSource) dataSource;
+			mds.getFunctionImportHandlers().put(functionName, handler);
+		}
 		return this;
 	}
 
@@ -121,8 +146,21 @@ public class ODataMockServer {
 	 * @return This same instance for fluent calls
 	 */
 	public ODataMockServer clearHandlers() {
-		serviceFactory.getDataSource().getFunctionImportHandlers().clear();
+		if (dataSource instanceof MockDataSource) {
+			MockDataSource mds = (MockDataSource) dataSource;
+			mds.getFunctionImportHandlers().clear();
+		}
 		return this;
+	}
+
+	/**
+	 * Creates a new DataSource instance for handling the OData requests.
+	 * Override this method if you need more advanced customization.
+	 * @return New DataSource instance
+	 * @throws ODataException If the DataSource initialization fails
+	 */
+	protected DataSource createDataSource() throws ODataException {
+		return new MockDataSource(edmProvider, dataStore);
 	}
 
 }

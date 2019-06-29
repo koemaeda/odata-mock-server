@@ -35,8 +35,8 @@ public class MockDataGeneratorTest {
 	    		.edmxFromFile("src/test/resources/Northwind.svc.edmx")
 	    		.build();
 
-		edm = server.getServiceFactory().getEdm();
-		edmProvider = server.getServiceFactory().getEdmProvider();
+		edm = server.getEdm();
+		edmProvider = server.getEdmProvider();
 	}
 	
 	@Before

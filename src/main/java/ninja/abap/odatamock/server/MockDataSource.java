@@ -15,6 +15,8 @@
  */
 package ninja.abap.odatamock.server;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -22,16 +24,16 @@ import java.util.Map;
 
 import org.apache.olingo.odata2.annotation.processor.core.datasource.DataSource;
 import org.apache.olingo.odata2.api.edm.EdmEntitySet;
+import org.apache.olingo.odata2.api.edm.EdmEntityType;
 import org.apache.olingo.odata2.api.edm.EdmException;
 import org.apache.olingo.odata2.api.edm.EdmFunctionImport;
+import org.apache.olingo.odata2.api.edm.EdmNavigationProperty;
 import org.apache.olingo.odata2.api.edm.provider.EdmProvider;
 import org.apache.olingo.odata2.api.exception.ODataApplicationException;
-import org.apache.olingo.odata2.api.exception.ODataException;
 import org.apache.olingo.odata2.api.exception.ODataNotFoundException;
 import org.apache.olingo.odata2.api.exception.ODataNotImplementedException;
 
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import ninja.abap.odatamock.event.FunctionImportHandler;
 
@@ -39,19 +41,13 @@ import ninja.abap.odatamock.event.FunctionImportHandler;
  * Implementation based on org.apache.olingo.odata2.annotation.processor.core.datasource.AnnotationInMemoryDs
  */
 @RequiredArgsConstructor
-class MockDataSource implements DataSource {
+public class MockDataSource implements DataSource {
 
 	protected final EdmProvider edmProvider;
-	@Getter
 	protected final MockDataStore dataStore;
 
 	@Getter
 	protected final Map<String, FunctionImportHandler> functionImportHandlers = new HashMap<>();
-
-	MockDataSource(final @NonNull EdmProvider edmProvider) throws ODataException {
-		this.edmProvider = edmProvider;
-		this.dataStore = new MockDataStore(edmProvider);
-	}
 
 	@Override
 	public List<?> readData(EdmEntitySet entitySet)
@@ -76,10 +72,23 @@ class MockDataSource implements DataSource {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public Object readRelatedData(EdmEntitySet sourceEntitySet, Object sourceData, EdmEntitySet targetEntitySet,
 			Map<String, Object> targetKeys)
 			throws ODataNotImplementedException, ODataNotFoundException, EdmException, ODataApplicationException {
-		throw new ODataNotImplementedException();
+		// Single record access?
+		if (targetKeys != null && !targetKeys.isEmpty())
+			return dataStore.getRecordByKey(targetEntitySet.getName(), targetKeys);
+
+		// Entity Set navigation access
+		Map<String, Object> sourceEntry = (Map<String, Object>) sourceData;
+
+		String assocName = findNavigationPropertyName(sourceEntitySet, targetEntitySet);
+		List<Map<String, Object>> association = (List<Map<String, Object>>) sourceEntry.get(assocName);
+		if (association == null)
+			return Collections.emptyList();
+
+		return association;
 	}
 
 	@Override
@@ -118,7 +127,7 @@ class MockDataSource implements DataSource {
 			throw new ODataApplicationException("Inserted record is of invalid type " +
 				data.getClass().getName(), Locale.getDefault());
 
-		dataStore.put(entitySet.getName(), (Map<String, Object>) data);
+		dataStore.insert(entitySet.getName(), (Map<String, Object>) data);
 	}
 
 	@Override
@@ -129,10 +138,38 @@ class MockDataSource implements DataSource {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public void writeRelation(EdmEntitySet sourceEntitySet, Object sourceData, EdmEntitySet targetEntitySet,
 			Map<String, Object> targetKeys)
 			throws ODataNotImplementedException, ODataNotFoundException, EdmException, ODataApplicationException {
-		throw new ODataNotImplementedException();
+		Map<String, Object> sourceEntry = (Map<String, Object>) sourceData;
+
+		String assocName = findNavigationPropertyName(sourceEntitySet, targetEntitySet);
+		List<Map<String, Object>> association = (List<Map<String, Object>>) sourceEntry.get(assocName);
+		if (association == null) {
+			association = new ArrayList<>();
+			sourceEntry.put(assocName, association);
+		}
+
+		association.add(targetKeys);
+		dataStore.put(sourceEntitySet.getName(), sourceEntry);
+	}
+
+
+	protected String findNavigationPropertyName(EdmEntitySet sourceEntitySet, EdmEntitySet targetEntitySet)
+			throws EdmException {
+		EdmEntityType sourceEntityType = sourceEntitySet.getEntityType();
+		EdmEntityType targetEntityType = targetEntitySet.getEntityType();
+
+		for (String propertyName : sourceEntityType.getNavigationPropertyNames()) {
+			EdmNavigationProperty navProp = (EdmNavigationProperty) sourceEntityType.getProperty(propertyName);
+			EdmEntityType navET = navProp.getRelationship().getEnd2().getEntityType();
+
+			if (navET == targetEntityType)
+				return navProp.getName();
+		}
+
+		throw new EdmException(EdmException.NAVIGATIONPROPERTYNOTFOUND);
 	}
 
 }

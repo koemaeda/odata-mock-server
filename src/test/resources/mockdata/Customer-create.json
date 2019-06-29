@@ -1,0 +1,47 @@
+{
+    "CustomerID": "ANTON",
+    "CompanyName": "Antonio Moreno Taquería",
+    "ContactName": "Antonio Moreno",
+    "ContactTitle": "Owner",
+    "Address": "Mataderos  2312",
+    "City": "México D.F.",
+    "Region": null,
+    "PostalCode": "05023",
+    "Country": "Mexico",
+    "Phone": "(5) 555-3932",
+    "Fax": null,
+    "Orders": [
+        {
+            "OrderID": 10365,
+            "CustomerID": "ANTON",
+            "EmployeeID": 3,
+            "OrderDate": "/Date(849052800000)/",
+            "RequiredDate": "/Date(851472000000)/",
+            "ShippedDate": "/Date(849484800000)/",
+            "ShipVia": 2,
+            "Freight": "22.0000",
+            "ShipName": "Antonio Moreno Taquería",
+            "ShipAddress": "Mataderos  2312",
+            "ShipCity": "México D.F.",
+            "ShipRegion": null,
+            "ShipPostalCode": "05023",
+            "ShipCountry": "Mexico"
+        },
+        {
+            "OrderID": 10507,
+            "CustomerID": "ANTON",
+            "EmployeeID": 7,
+            "OrderDate": "/Date(861062400000)/",
+            "RequiredDate": "/Date(863481600000)/",
+            "ShippedDate": "/Date(861667200000)/",
+            "ShipVia": 1,
+            "Freight": "47.4500",
+            "ShipName": "Antonio Moreno Taquería",
+            "ShipAddress": "Mataderos  2312",
+            "ShipCity": "México D.F.",
+            "ShipRegion": null,
+            "ShipPostalCode": "05023",
+            "ShipCountry": "Mexico"
+        }
+    ]
+}

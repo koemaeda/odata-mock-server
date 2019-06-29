@@ -96,9 +96,9 @@ public class MockDataStore {
 	 * @param entitySet Entity Set name
 	 * @param record New record to be added to the stored data (map of fields) 
 	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service
-	 *  or there's already an existing record with the same key.
+	 *   or there's already an existing record with the same key.
 	 */
-	public void put(String entitySet, Map<String, Object> record) throws ODataApplicationException {
+	public void insert(String entitySet, Map<String, Object> record) throws ODataApplicationException {
 		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
 		if (esData == null)
 			throw new ODataApplicationException(String.format("Entity Set %s not found", entitySet),
@@ -113,11 +113,26 @@ public class MockDataStore {
 	}
 
 	/**
-	 * Inserts multiple records into an Entity Set
+	 * Inserts/updates a record into an Entity Set
 	 * @param entitySet Entity Set name
-	 * @param records New records to be added to the stored data (maps of fields)
+	 * @param record New record to be added/updated to the stored data (map of fields) 
 	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service
-	 *  or there's already an existing record with the same key.
+	 */
+	public void put(String entitySet, Map<String, Object> record) throws ODataApplicationException {
+		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
+		if (esData == null)
+			throw new ODataApplicationException(String.format("Entity Set %s not found", entitySet),
+					Locale.getDefault());
+
+		Map<String, Object> key = getRecordKey(entitySet, record);
+		esData.put(key, record);
+	}
+
+	/**
+	 * Inserts/updates multiple records into an Entity Set
+	 * @param entitySet Entity Set name
+	 * @param records New records to be added/updated to the stored data (maps of fields)
+	 * @throws ODataApplicationException If the Entity Set does not exist in the mocked OData service
 	 */
 	public void putAll(String entitySet, Iterable<Map<String, Object>> records) throws ODataApplicationException {
 		LinkedHashMap<Map<String, Object>, Map<String, Object>>	esData = data.get(entitySet);
@@ -127,10 +142,6 @@ public class MockDataStore {
 
 		for (Map<String, Object> record : records) {
 			Map<String, Object> key = getRecordKey(entitySet, record);
-			if (esData.containsKey(key))
-				throw new ODataApplicationException(
-						String.format("Cannot insert duplicate record key in %s", entitySet), Locale.getDefault());
-
 			esData.put(key, record);
 		}
 	}
