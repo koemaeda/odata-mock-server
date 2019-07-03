@@ -33,6 +33,7 @@ import org.apache.olingo.odata2.api.edm.provider.EdmProvider;
 import org.apache.olingo.odata2.api.ep.EntityProvider;
 import org.apache.olingo.odata2.api.ep.EntityProviderException;
 import org.apache.olingo.odata2.api.ep.EntityProviderReadProperties;
+import org.apache.olingo.odata2.api.ep.entry.ODataEntry;
 import org.apache.olingo.odata2.api.ep.feed.ODataFeed;
 import org.apache.olingo.odata2.api.exception.ODataException;
 
@@ -92,6 +93,7 @@ class MockDataLoader {
 	 * @throws EdmException 
 	 * @throws EntityProviderException 
 	 */
+	@SuppressWarnings("unchecked")
 	protected List<Map<String, Object>> loadDataFromFile(String name) throws IOException, EntityProviderException, EdmException {
 		// Check if file exists
 		File file = directory.resolve(name + ".json").toFile();
@@ -106,9 +108,23 @@ class MockDataLoader {
 		        edm.getDefaultEntityContainer().getEntitySet(name), json,
 		        EntityProviderReadProperties.init().build());
 
-		return feed.getEntries().stream()
-				.map(e -> e.getProperties())
+		return (List<Map<String, Object>>) transformAssociation(feed);
+	}
+
+	private Object transformAssociation(Object association) {
+		if (association instanceof ODataFeed) {
+			return ((ODataFeed) association).getEntries().stream()
+				.map(e -> transformAssociation(e))
 				.collect(Collectors.toList());
+		}
+		else if (association instanceof ODataEntry) {
+			Map<String, Object> properties = ((ODataEntry) association).getProperties();
+			properties.keySet().stream()
+				.forEach(k -> properties.put(k, transformAssociation(properties.get(k))));
+			return properties;
+		}
+		else
+			return association;
 	}
 
 }

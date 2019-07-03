@@ -115,7 +115,10 @@ public class ODataMockServer {
 		server.setHandler(newHandler);
 
     	server.start();
-    	this.uri = new URI(StringUtils.appendIfMissing(server.getURI().toString() + servletPath, "/"));
+
+    	URI rootUri = server.getURI();
+    	this.uri = new URI(rootUri.getScheme(), rootUri.getUserInfo(), rootUri.getHost(),
+    			rootUri.getPort(), servletPath, null, null);
 	}
 
 	/**

@@ -16,12 +16,10 @@
 package ninja.abap.odatamock.server;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
 import org.apache.olingo.odata2.annotation.processor.core.datasource.DataSource;
 import org.apache.olingo.odata2.api.edm.EdmEntitySet;
 import org.apache.olingo.odata2.api.edm.EdmEntityType;
@@ -84,11 +82,7 @@ public class MockDataSource implements DataSource {
 		Map<String, Object> sourceEntry = (Map<String, Object>) sourceData;
 
 		String assocName = findNavigationPropertyName(sourceEntitySet, targetEntitySet);
-		List<Map<String, Object>> association = (List<Map<String, Object>>) sourceEntry.get(assocName);
-		if (association == null)
-			return Collections.emptyList();
-
-		return association;
+		return sourceEntry.get(assocName);
 	}
 
 	@Override
@@ -163,9 +157,10 @@ public class MockDataSource implements DataSource {
 
 		for (String propertyName : sourceEntityType.getNavigationPropertyNames()) {
 			EdmNavigationProperty navProp = (EdmNavigationProperty) sourceEntityType.getProperty(propertyName);
-			EdmEntityType navET = navProp.getRelationship().getEnd2().getEntityType();
+			EdmEntityType navET1 = navProp.getRelationship().getEnd1().getEntityType();
+			EdmEntityType navET2 = navProp.getRelationship().getEnd2().getEntityType();
 
-			if (navET == targetEntityType)
+			if (navET1 == targetEntityType || navET2 == targetEntityType)
 				return navProp.getName();
 		}
 

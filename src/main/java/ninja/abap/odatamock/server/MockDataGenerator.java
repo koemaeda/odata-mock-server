@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.olingo.odata2.api.edm.Edm;
 import org.apache.olingo.odata2.api.edm.EdmEntitySet;
 import org.apache.olingo.odata2.api.edm.EdmEntityType;
@@ -176,12 +177,14 @@ class MockDataGenerator {
 			strVal = Integer.toString(index % 128);
 			break;
 		case "Edm.String":
-			String indexStr = String.format(" %d", index);
-			String namePrefix = fieldName;
-			if (facets != null && facets.getMaxLength() != null
-					&& namePrefix.length() + indexStr.length() > facets.getMaxLength())
-				namePrefix = fieldName.substring(0, facets.getMaxLength() - indexStr.length());
-			strVal = namePrefix + indexStr;
+			int maxLength = (facets != null && facets.getMaxLength() != null)
+				? Math.max(1, facets.getMaxLength()) : 99;
+			String indexStr = String.format("%d", index);
+			if (maxLength < 3)
+				strVal = StringUtils.truncate(indexStr, maxLength);
+			else
+				strVal = StringUtils.truncate(StringUtils.truncate(fieldName, maxLength - 4)
+						+ " " + indexStr, maxLength);
 			break;
 		case "Edm.Time":
 			strVal = String.format("PT%dH00M", index);
@@ -193,4 +196,5 @@ class MockDataGenerator {
 		return edmType.valueOfString(strVal, EdmLiteralKind.JSON, facets, edmType.getDefaultType());
 	}
 
+	
 }

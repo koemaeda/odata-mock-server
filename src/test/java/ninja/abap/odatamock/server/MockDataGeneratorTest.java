@@ -148,6 +148,11 @@ public class MockDataGeneratorTest {
 				new Facets().setMaxLength(10), 123);
 		assertThat("Generated value is String", value.getClass(), is(String.class));
 		assertThat("Generated value is 'LongFi 123'", value.toString(), is("LongFi 123"));
+
+		value = generator.generateValue("LongFieldName", EdmString.getInstance(),
+				new Facets().setMaxLength(1), 123);
+		assertThat("Generated value is String", value.getClass(), is(String.class));
+		assertThat("Generated value is '1'", value.toString(), is("1"));
 	}
 
 	@Test
