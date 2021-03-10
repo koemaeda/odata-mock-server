@@ -30,7 +30,7 @@
 
 	<properties>
 		<olingo.version>2.0.11</olingo.version>
-		<jetty.version>9.4.19.v20190610</jetty.version>
+		<jetty.version>11.0.1</jetty.version>
 	</properties>
 
 	<build>
